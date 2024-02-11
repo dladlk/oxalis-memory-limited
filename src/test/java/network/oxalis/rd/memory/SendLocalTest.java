@@ -63,10 +63,19 @@ public class SendLocalTest {
 	private MessageSender messageSender;
 
 	public SendLocalTest() throws Exception {
-		// Security.setProperty("jdk.security.provider.preferred", "AES/GCM/NoPadding:BC");
 		this.original = resourceToByteArray("/sbd-test-file.xml");
 	}
 
+	public static void main(String[] args) throws Exception {
+		SendLocalTest test = new SendLocalTest();
+		test.beforeClass();
+		try {
+			test.send();
+		} finally {
+			test.afterClass();
+		}
+	}
+	
 	private byte[] resourceToByteArray(String resource) throws Exception {
 		try (InputStream is = this.getClass().getResourceAsStream(resource)) {
 			return is.readAllBytes();
