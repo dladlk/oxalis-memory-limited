@@ -5,7 +5,7 @@ setlocal enabledelayedexpansion
 set OXALIS_HOME=src\main\resources\oxalis_home
 
 SET DOC_SIZE=1
-SET XMX=27
+SET XMX=24
 SET XMX_INCREMENT=1
 SET MAX_DOC_SIZE=600
 set MAX_XMX=6000
