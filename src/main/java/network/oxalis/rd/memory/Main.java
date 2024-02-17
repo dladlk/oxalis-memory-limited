@@ -106,7 +106,9 @@ public class Main {
 		} finally {
 			main.afterClass();
 		}
-		logResult.info("\t{}\t{}\t{}\t{}\t{}", main.increaseAttachmentSizeMB, String.format("%.2f", main.zipFileSize / 1024.0 / 1024.0), main.maxMemory, failed ? "ERROR" : "OK", duration);
+		if (!failed) {
+			logResult.info("\t{}\t{}\t{}\t{}", (int) main.increaseAttachmentSizeMB, String.format("%.2f", main.zipFileSize / 1024.0 / 1024.0), (int) main.maxMemory, duration);
+		}
 		if (failed) {
 			System.exit(1);
 		}
