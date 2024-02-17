@@ -2,8 +2,6 @@ package network.oxalis.rd.memory;
 
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -12,13 +10,10 @@ import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.EnumSet;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 import javax.crypto.Cipher;
 import javax.servlet.DispatcherType;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.xml.security.algorithms.JCEMapper;
 import org.apache.xml.security.utils.EncryptionConstants;
 import org.eclipse.jetty.server.Server;
@@ -75,8 +70,11 @@ public class Main {
 
 	private long zipFileSize;
 
+	private BigTestDocumentBuilder documentBuilder;
+
 	public Main() throws Exception {
 		this.original = resourceToByteArray("/sbd-test-file.xml");
+		this.documentBuilder = new BigTestDocumentBuilder(original);
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -108,7 +106,7 @@ public class Main {
 		} finally {
 			main.afterClass();
 		}
-		logResult.info("{}\t{}\t{}\t{}\t{}", main.increaseAttachmentSizeMB, main.zipFileSize, main.maxMemory, failed ? "ERROR" : "OK", duration);
+		logResult.info("\t{}\t{}\t{}\t{}\t{}", main.increaseAttachmentSizeMB, String.format("%.2f", main.zipFileSize / 1024.0 / 1024.0), main.maxMemory, failed ? "ERROR" : "OK", duration);
 		if (failed) {
 			System.exit(1);
 		}
@@ -191,28 +189,13 @@ public class Main {
 		}
 		X509Certificate serverCertificate = injector.getInstance(X509Certificate.class);
 		log.info("Send an invoice with {} mb attachment", this.increaseAttachmentSizeMB);
-		File payloadFile = new BigTestDocumentBuilder(original)
+		File payloadFile = documentBuilder
 				.increaseAttachment(INCREASE_ATTACHMENT, increaseAttachmentSizeMB)
 				.build();
-		File zipFile = new File(payloadFile.getAbsolutePath() + ".zip");
-		if (zipFile.exists()) {
-			this.zipFileSize = zipFile.length();
-		} else {
-			this.zipFileSize = createZipFile(zipFile, payloadFile);
-		}
+		this.zipFileSize = documentBuilder.getZipFileSize();
 
 		String serverUrl = "http://localhost:8080/as4";
 		return send(this.messageSender, serverUrl, serverCertificate, payloadFile);
-	}
-
-	private long createZipFile(File zipFile, File payloadFile) throws IOException {
-		try (ZipOutputStream zipOut = new ZipOutputStream(Files.newOutputStream(zipFile.toPath()));
-				FileInputStream fis = new FileInputStream(payloadFile)) {
-			ZipEntry zipEntry = new ZipEntry(payloadFile.getName());
-			zipOut.putNextEntry(zipEntry);
-			IOUtils.copy(fis, zipOut);
-		}
-		return zipFile.length();
 	}
 
 	protected long send(MessageSender messageSender, String serverUrl, X509Certificate serverCertificate, File payloadFile) throws Exception {

@@ -2,6 +2,7 @@ package network.oxalis.rd.memory;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -11,7 +12,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
 import java.util.Random;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.cxf.common.util.Base64OutputStream;
 import org.bouncycastle.util.encoders.Base64;
 
@@ -71,7 +75,7 @@ public class BigTestDocumentBuilder {
 		}
 		try {
 			Path preparedPath = Paths.get(System.getProperty("java.io.tmpdir"), "NemHandel_eDelivery_test_file_size_" + fileSuffix + "_MB.xml");
-			File preparedFile = preparedPath.toFile();
+			preparedFile = preparedPath.toFile();
 			File file = File.createTempFile(Main.class.getName(), ".xml");
 
 			if (this.increaseAttachmentKeepGenerated && preparedFile.exists() && preparedFile.length() > length) {
@@ -128,5 +132,25 @@ public class BigTestDocumentBuilder {
 	}
 
 	private static final DecimalFormat DF = new DecimalFormat("0.##");
+	private File preparedFile;
+
+	public long getZipFileSize() throws IOException {
+		File zipFile = new File(preparedFile.getAbsolutePath() + ".zip");
+		if (zipFile.exists()) {
+			return zipFile.length();
+		} else {
+			return createZipFile(zipFile, preparedFile);
+		}
+	}
+	
+	private long createZipFile(File zipFile, File payloadFile) throws IOException {
+		try (ZipOutputStream zipOut = new ZipOutputStream(Files.newOutputStream(zipFile.toPath()));
+				FileInputStream fis = new FileInputStream(payloadFile)) {
+			ZipEntry zipEntry = new ZipEntry(payloadFile.getName());
+			zipOut.putNextEntry(zipEntry);
+			IOUtils.copy(fis, zipOut);
+		}
+		return zipFile.length();
+	}
 
 }
