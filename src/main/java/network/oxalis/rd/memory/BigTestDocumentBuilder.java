@@ -54,11 +54,11 @@ public class BigTestDocumentBuilder {
 		long lengthKB = (long) (expectedResultMBSize * 0.75 * 1024.0); // 75 MB binary gives 100 MB Base64
 		long length = lengthKB * 1024;
 		String fileSuffix = df(expectedResultMBSize);
-		log.info("Start to generate {} bytes of random attachment to reach expected final {} MB size", df(length), fileSuffix);
+		log.debug("Start to generate {} bytes of random attachment to reach expected final {} MB size", df(length), fileSuffix);
 		int bufferSize = 8192 * 100;
 		long startWrite = System.currentTimeMillis();
 		File file = increasePayloadAttachmentToFile(original, length, bufferSize, fileSuffix);
-		log.info("Generated {} additional bytes to get {} MB of payload in {} ms", df(length), df(expectedResultMBSize), df(System.currentTimeMillis() - startWrite));
+		log.debug("Generated {} additional bytes to get {} MB of payload in {} ms", df(length), df(expectedResultMBSize), df(System.currentTimeMillis() - startWrite));
 		return file;
 	}
 
@@ -72,7 +72,7 @@ public class BigTestDocumentBuilder {
 		try {
 			Path preparedPath = Paths.get(System.getProperty("java.io.tmpdir"), "NemHandel_eDelivery_test_file_size_" + fileSuffix + "_MB.xml");
 			File preparedFile = preparedPath.toFile();
-			File file = File.createTempFile(SendLocalTest.class.getName(), ".xml");
+			File file = File.createTempFile(Main.class.getName(), ".xml");
 
 			if (this.increaseAttachmentKeepGenerated && preparedFile.exists() && preparedFile.length() > length) {
 				long startCopy = System.currentTimeMillis();

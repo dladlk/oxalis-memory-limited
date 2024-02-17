@@ -15,16 +15,37 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>21</java.version>
+        <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <bouncycastle.version>1.70</bouncycastle.version>
         <oxalis.version>6.4.0</oxalis.version>
-        
-        <junit.version>4.13.2</junit.version>
     </properties>
 
     <dependencies>
+		<!-- START Modifications -->
+		<!--	
+		<dependency>
+			<groupId>network.oxalis.modified</groupId>
+			<artifactId>a-modified-cxf-core-cachedoutputstream</artifactId>
+			<version>3.5.5.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>network.oxalis.modified</groupId>
+			<artifactId>a-modified-wss4j-ws-security-common-attachmentutils</artifactId>
+			<version>2.4.1.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>network.oxalis.modified</groupId>
+			<artifactId>a-modified-xmlsec-domreference</artifactId>
+			<version>2.3.0.0</version>
+			<scope>test</scope>
+		</dependency>
+			-->
+		<!-- END Modifications -->
+		
         <!-- Oxalis -->
         <dependency>
             <groupId>network.oxalis</groupId>
@@ -34,6 +55,16 @@
         <dependency>
             <groupId>network.oxalis</groupId>
             <artifactId>oxalis-commons</artifactId>
+            <exclusions>
+            	<exclusion>
+            		<groupId>io.zipkin.reporter2</groupId>
+            		<artifactId>zipkin-sender-urlconnection</artifactId>
+            	</exclusion>
+            	<exclusion>
+            		<groupId>io.zipkin.brave</groupId>
+            		<artifactId>brave</artifactId>
+            	</exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>network.oxalis</groupId>
@@ -54,17 +85,14 @@
         <dependency>
             <groupId>network.oxalis.vefa</groupId>
             <artifactId>peppol-common</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>network.oxalis.vefa</groupId>
             <artifactId>peppol-sbdh</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>network.oxalis.vefa</groupId>
             <artifactId>peppol-mode</artifactId>
-            <scope>provided</scope>
         </dependency>
         <!-- Only to compile AttachmentUtils from wss4j-ws-security-common-2.4.1.jar -->
         <dependency>
@@ -75,55 +103,59 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.opentracing</groupId>
             <artifactId>opentracing-noop</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>javax.inject</groupId>
             <artifactId>javax.inject</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.google.inject.extensions</groupId>
             <artifactId>guice-servlet</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
         </dependency>
-        <!-- Test -->
+        
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.11.0</version>
+        </dependency>
+        
         <dependency>
             <groupId>network.oxalis</groupId>
             <artifactId>oxalis-test</artifactId>
             <scope>test</scope>
         </dependency>
+        
         <dependency>
             <groupId>network.oxalis</groupId>
             <artifactId>oxalis-inbound</artifactId>
-            <scope>test</scope>
             <exclusions>
             	<exclusion>
             		<groupId>network.oxalis</groupId>
             		<artifactId>oxalis-as2</artifactId>
             	</exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testng</groupId>
@@ -133,7 +165,6 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>jul-to-slf4j</artifactId>
-			<scope>test</scope>
 		</dependency>
 
     </dependencies>
@@ -145,6 +176,20 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>3.4.0</version>
                 <executions>
+			        <execution>
+			            <id>copy-dependencies</id>
+			            <phase>prepare-package</phase>
+			            <goals>
+			                <goal>copy-dependencies</goal>
+			            </goals>
+			            <configuration>
+							<includeScope>runtime</includeScope>
+			                <outputDirectory>${project.build.directory}/lib</outputDirectory>
+			                <overWriteReleases>false</overWriteReleases>
+			                <overWriteSnapshots>false</overWriteSnapshots>
+			                <overWriteIfNewer>true</overWriteIfNewer>
+			            </configuration>
+			        </execution>					
                     <execution>
                         <id>analyze</id>
                         <goals>
@@ -160,7 +205,8 @@
                     </execution>
                 </executions>
             </plugin>
-        </plugins>
+		</plugins>
+        
     </build>
 
 </project>

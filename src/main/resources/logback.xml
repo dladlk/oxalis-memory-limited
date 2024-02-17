@@ -1,0 +1,104 @@
+<configuration>
+	
+  	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+  
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+    	<!-- reset all previous level configurations of all j.u.l. loggers -->
+    	<resetJUL>true</resetJUL>
+	</contextListener>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSS} [%.-4level] %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <appender name="RESULT_FILE" class="ch.qos.logback.core.FileAppender">
+        <file>result.txt</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSS} %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="org.apache.cxf" level="warn"/>
+    
+    <!-- CXF ClientImpl uses java.util.logging (JUL), so jul-to-slf4j is required and
+
+			SLF4JBridgeHandler.removeHandlersForRootLogger();
+			SLF4JBridgeHandler.install();
+			
+		in some bootstrap code (e.g. in SendLocalTest).
+	-->
+    
+    <!-- <logger name="org.apache.cxf.endpoint.ClientImpl" level="trace"/> -->
+    
+    <!-- Set to debug to see Loading module 'network.oxalis.commons.config.ConfigModule'. -->
+    <logger name="network.oxalis.commons.guice.GuiceModuleLoader" level="info"/>
+    
+    <logger name="org.testng" level="warn"/>
+    
+    <!-- Hide details about Home folder and config file -->
+    <logger name="network.oxalis.commons" level="warn"/>
+    <!-- Hide very important info about 'Registering OxalisAlgorithmSuite on bus cxf943659381'... -->
+    <logger name="network.oxalis.as4.util.OxalisAlgorithmSuiteLoader" level="warn"/>
+    <!-- Hide detected mode -->
+    <logger name="network.oxalis.vefa.peppol.security.ModeDetector" level="warn"/>
+    
+    
+    <!-- Hide OutOfMemoryError on /as4 receiving and status of Jetty server -->
+    <logger name="org.eclipse.jetty.server" level="error"/>
+    <!-- Hide Interceptor for {oxalis.network/}outbound-service#{http://cxf.apache.org/jaxws/dispatch}Invoke has thrown exception -->
+    <logger name="org.apache.cxf.phase.PhaseInterceptorChain" level="error"/>
+    
+    <logger name="network.oxalis.commons.settings.SettingsBuilder" level="warn"/>
+    <logger name="network.oxalis.outbound.transmission.MessageSenderFactory" level="warn"/>
+    
+    <logger name="com.mercell.nemhandel.as4.IntegrationTest" level="info"/>
+    
+    <!-- Surpress annoying INFO message (the only one!) which should be actually DEBUG - "[INFO] Signature algorithm : SHA256withRSA" in sign method... -->
+    <logger name="eu.europa.esig.dss.token.AbstractSignatureTokenConnection" level="warn"/>
+    
+    <!-- Surpress annoying INFO message (the only one!) which should be actually DEBUG - "[INFO] + New CommonCertificateVerifier created." in constructor -->
+    <logger name="eu.europa.esig.dss.validation.CommonCertificateVerifier" level="warn"/>
+    
+    <!-- Set to trace to see all CXF interceptors -->
+    <logger name="org.apache.cxf.phase.PhaseInterceptorChain" level="warn"/>
+    
+    <!-- <logger name="com.mercell.nemhandel.as4.signature.asic.ASICBuilder" level="debug"/> -->
+    
+    <!-- <logger name="com.mercell.nemhandel.as4.config.DocumentTypeConfigResolverImpl" level="debug"/> -->
+    
+    <!-- <logger name="org.xbill.DNS" level="debug"/> -->
+    
+    <logger name="com.mercell.nemhandel.as4.util.XMLStreamSkipLongStringsReader" level="info"/>
+    
+    <logger name="com.mercell.nemhandel.as4.validation.signature.PrecalculatedDigestGroup" level="debug"/>
+    <logger name="eu.europa.esig.dss.xades.validation.XAdESSignature" level="debug"/>
+    
+    <!-- Get rid of annoying strange INFO message "Santuario is already initialized with its default configuration" - it has to be DEBUG! -->
+    <logger name="eu.europa.esig.dss.xades.SantuarioInitializer" level="warn"/>
+    
+    <!-- Get rid of annoying strange INFO message "+XAdESCertificateSource" - it has to be DEBUG! -->
+    <logger name="eu.europa.esig.dss.xades.validation.XAdESCertificateSource" level="warn"/>
+
+    <!-- Get rid of annoying strange INFO message "Skipping OCSP check" - it has to be DEBUG! -->
+    <logger name="dk.erst.oxalis.as4.validation.signature.SkipOCSPRevocationDataLoadingStrategy" level="warn"/>
+
+	<!-- 
+    <logger name="com.mercell.nemhandel.as4.util.stream.PreventReadByteInputStream" level="debug"/>
+    <logger name="com.mercell.nemhandel.as4.signature.asic.CustomASiCWithXAdESService" level="debug"/>
+    <logger name="com.mercell.nemhandel.as4.validation.signature.DigestUtil" level="debug"/>
+    <logger name="com.mercell.nemhandel.as4.validation.signature.SignatureValidatorImpl" level="debug"/>
+	 -->
+	 
+	 <logger name="network.oxalis.rd.memory" level="info"/>
+	 
+	 <logger name="network.oxalis.rd.Result" level="info">
+	 	<appender-ref ref="RESULT_FILE"/>
+	 </logger>
+
+    <root level="error">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+</configuration>

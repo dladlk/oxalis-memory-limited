@@ -2,27 +2,31 @@ package network.oxalis.rd.memory;
 
 import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.EnumSet;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import javax.crypto.Cipher;
 import javax.servlet.DispatcherType;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.xml.security.algorithms.JCEMapper;
 import org.apache.xml.security.utils.EncryptionConstants;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -33,6 +37,8 @@ import com.google.inject.servlet.GuiceFilter;
 import com.google.inject.servlet.GuiceServletContextListener;
 import com.google.inject.util.Modules;
 
+import io.opentracing.Tracer;
+import io.opentracing.noop.NoopTracerFactory;
 import lombok.extern.slf4j.Slf4j;
 import network.oxalis.api.outbound.MessageSender;
 import network.oxalis.api.outbound.TransmissionRequest;
@@ -48,7 +54,9 @@ import network.oxalis.vefa.peppol.common.model.ProcessIdentifier;
 import network.oxalis.vefa.peppol.common.model.TransportProfile;
 
 @Slf4j
-public class SendLocalTest {
+public class Main {
+
+	private static final Logger logResult = LoggerFactory.getLogger("network.oxalis.rd.Result");
 
 	protected Injector injector;
 	protected Server server;
@@ -56,40 +64,64 @@ public class SendLocalTest {
 	private static boolean INCREASE_ATTACHMENT = true;
 	private static boolean LOG_INSTALLED_MODULES = false;
 	// Default threshould of org.apache.cxf.io.CachedOutputStream in Oxalis is 128KB of encrypted zipped attachment - so having attachment more than 150 KB size tests file-based processing
-	private static double INCREASE_ATTACHMENT_RESULT_MB_SIZE = 100;
-	private static final boolean CONFIGURE_JUL_LOGGING = false; // If you need to debug CXF java.util.logging(JUL) logging level, works with slf4j-to-jul
+	private static final boolean CONFIGURE_JUL_LOGGING = true; // If you need to debug CXF java.util.logging(JUL) logging level, works with slf4j-to-jul
 	private static final boolean PRINT_RESPONSE = false;
+
+	private double increaseAttachmentSizeMB = 1;
 	private final byte[] original;
 	private MessageSender messageSender;
 
-	public SendLocalTest() throws Exception {
+	private double maxMemory;
+
+	private long zipFileSize;
+
+	public Main() throws Exception {
 		this.original = resourceToByteArray("/sbd-test-file.xml");
 	}
 
 	public static void main(String[] args) throws Exception {
-		SendLocalTest test = new SendLocalTest();
-		test.beforeClass();
+		Security.setProperty("jdk.security.provider.preferred", "AES/GCM/NoPadding:BC");
+		if (CONFIGURE_JUL_LOGGING) {
+			SLF4JBridgeHandler.removeHandlersForRootLogger();
+			SLF4JBridgeHandler.install();
+		}
+		Main main = new Main();
+		main.beforeClass();
+		boolean failed = false;
+		long duration = 0;
 		try {
-			test.send();
+			if (args.length > 0) {
+				for (int i = 0; i < args.length; i++) {
+					main.increaseAttachmentSizeMB = Double.valueOf(args[i]);
+					duration = main.send();
+				}
+			} else {
+				try {
+					duration = 0;
+					duration = main.send();
+				} catch (Throwable e) {
+					log.error(e.getMessage());
+					failed = true;
+				}
+
+			}
 		} finally {
-			test.afterClass();
+			main.afterClass();
+		}
+		logResult.info("{}\t{}\t{}\t{}\t{}", main.increaseAttachmentSizeMB, main.zipFileSize, main.maxMemory, failed ? "ERROR" : "OK", duration);
+		if (failed) {
+			System.exit(1);
 		}
 	}
-	
+
 	private byte[] resourceToByteArray(String resource) throws Exception {
 		try (InputStream is = this.getClass().getResourceAsStream(resource)) {
 			return is.readAllBytes();
 		}
 	}
 
-	@BeforeClass
 	public void beforeClass() throws Exception {
-		if (CONFIGURE_JUL_LOGGING) {
-			SLF4JBridgeHandler.removeHandlersForRootLogger();
-			SLF4JBridgeHandler.install();
-		}
-
-		TestUtil.logMaxMemory(log);
+		maxMemory = TestUtil.logMaxMemory(log);
 
 		this.injector = this.buildInjector();
 
@@ -99,7 +131,7 @@ public class SendLocalTest {
 		handler.addFilter(GuiceFilter.class, "/*", EnumSet.allOf(DispatcherType.class));
 		handler.addEventListener(new GuiceServletContextListener() {
 			protected Injector getInjector() {
-				return SendLocalTest.this.injector;
+				return Main.this.injector;
 			}
 		});
 		handler.addServlet(DefaultServlet.class, "/");
@@ -108,7 +140,6 @@ public class SendLocalTest {
 		messageSender = injector.getInstance(Key.get(MessageSender.class, Names.named("oxalis-as4")));
 	}
 
-	@AfterClass
 	public void afterClass() throws Exception {
 		if (this.server != null) {
 			this.server.stop();
@@ -131,6 +162,7 @@ public class SendLocalTest {
 					@Override
 					protected void configure() {
 						getModules().forEach(e -> {
+							log.debug("Installing {}", e.getClass().getName());
 							binder().install(e);
 						});
 						if (LOG_INSTALLED_MODULES) {
@@ -144,27 +176,46 @@ public class SendLocalTest {
 						}
 					}
 				}).with(new AbstractModule() {
+					@Override
+					protected void configure() {
+						bind(Key.get(Tracer.class)).toProvider(NoopTracerFactory::create);
+					}
 				}));
 	}
 
-	@Test
-	public void send() throws Exception {
+	public long send() throws Exception {
 		String cipherImplementation = getCipherImplementation();
 		log.info("cipher.aes128_gcm.provider.impl: {}", cipherImplementation);
 		if (!"org.bouncycastle.jce.provider.BouncyCastleProvider".equals(cipherImplementation)) {
 			log.error("ATTENTION: Cipher is not configured to BouncyCastle, decryption performance or memory usage is degraded in SunJCE!");
 		}
 		X509Certificate serverCertificate = injector.getInstance(X509Certificate.class);
-
+		log.info("Send an invoice with {} mb attachment", this.increaseAttachmentSizeMB);
 		File payloadFile = new BigTestDocumentBuilder(original)
-				.increaseAttachment(INCREASE_ATTACHMENT, INCREASE_ATTACHMENT_RESULT_MB_SIZE)
+				.increaseAttachment(INCREASE_ATTACHMENT, increaseAttachmentSizeMB)
 				.build();
+		File zipFile = new File(payloadFile.getAbsolutePath() + ".zip");
+		if (zipFile.exists()) {
+			this.zipFileSize = zipFile.length();
+		} else {
+			this.zipFileSize = createZipFile(zipFile, payloadFile);
+		}
 
 		String serverUrl = "http://localhost:8080/as4";
-		send(this.messageSender, serverUrl, serverCertificate, payloadFile);
+		return send(this.messageSender, serverUrl, serverCertificate, payloadFile);
 	}
 
-	protected void send(MessageSender messageSender, String serverUrl, X509Certificate serverCertificate, File payloadFile) throws Exception {
+	private long createZipFile(File zipFile, File payloadFile) throws IOException {
+		try (ZipOutputStream zipOut = new ZipOutputStream(Files.newOutputStream(zipFile.toPath()));
+				FileInputStream fis = new FileInputStream(payloadFile)) {
+			ZipEntry zipEntry = new ZipEntry(payloadFile.getName());
+			zipOut.putNextEntry(zipEntry);
+			IOUtils.copy(fis, zipOut);
+		}
+		return zipFile.length();
+	}
+
+	protected long send(MessageSender messageSender, String serverUrl, X509Certificate serverCertificate, File payloadFile) throws Exception {
 		final File finalPayloadFile = payloadFile;
 		try {
 			long payloadFileSizeKB = payloadFile.length() / 1024;
@@ -177,15 +228,15 @@ public class SendLocalTest {
 
 			TransmissionResponse response = messageSender.send(sendTransmissionRequest);
 
-			Assert.assertNotNull(response);
-			Assert.assertEquals(TransportProfile.AS4, response.getProtocol());
-
-			log.info("Received response in {} ms", (System.currentTimeMillis() - startSend));
+			long duration = System.currentTimeMillis() - startSend;
+			log.info("Received response in {} ms", duration);
 
 			if (PRINT_RESPONSE) {
 				String receipt = new String(response.getReceipts().get(0).getValue(), StandardCharsets.UTF_8);
 				log.info(receipt);
 			}
+
+			return duration;
 
 		} finally {
 			if (finalPayloadFile != null && finalPayloadFile.exists()) {
