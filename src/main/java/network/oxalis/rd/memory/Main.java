@@ -92,11 +92,13 @@ public class Main {
 				for (int i = 0; i < args.length; i++) {
 					main.increaseAttachmentSizeMB = Double.valueOf(args[i]);
 					duration = main.send();
+					logResult.info("\t{}\t{}\t{}\t{}", (int) main.increaseAttachmentSizeMB, String.format("%.2f", main.zipFileSize / 1024.0 / 1024.0), (int) main.maxMemory, duration);
 				}
 			} else {
 				try {
 					duration = 0;
 					duration = main.send();
+					logResult.info("\t{}\t{}\t{}\t{}", (int) main.increaseAttachmentSizeMB, String.format("%.2f", main.zipFileSize / 1024.0 / 1024.0), (int) main.maxMemory, duration);
 				} catch (Throwable e) {
 					log.error(e.getMessage());
 					failed = true;
@@ -105,9 +107,6 @@ public class Main {
 			}
 		} finally {
 			main.afterClass();
-		}
-		if (!failed) {
-			logResult.info("\t{}\t{}\t{}\t{}", (int) main.increaseAttachmentSizeMB, String.format("%.2f", main.zipFileSize / 1024.0 / 1024.0), (int) main.maxMemory, duration);
 		}
 		if (failed) {
 			System.exit(1);

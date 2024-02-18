@@ -29,19 +29,16 @@
 			<groupId>network.oxalis.modified</groupId>
 			<artifactId>a-modified-cxf-core-cachedoutputstream</artifactId>
 			<version>3.5.5.0</version>
-			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>network.oxalis.modified</groupId>
 			<artifactId>a-modified-wss4j-ws-security-common-attachmentutils</artifactId>
 			<version>2.4.1.0</version>
-			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>network.oxalis.modified</groupId>
 			<artifactId>a-modified-xmlsec-domreference</artifactId>
 			<version>2.3.0.0</version>
-			<scope>test</scope>
 		</dependency>
 			-->
 		<!-- END Modifications -->
