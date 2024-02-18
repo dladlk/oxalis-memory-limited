@@ -89,11 +89,14 @@ public class Main {
 		long duration = 0;
 		try {
 			if (args.length > 0) {
+				long minDuration = Long.MAX_VALUE;
 				for (int i = 0; i < args.length; i++) {
 					main.increaseAttachmentSizeMB = Double.valueOf(args[i]);
 					duration = main.send();
+					minDuration = Math.min(minDuration, duration);
 					logResult.info("\t{}\t{}\t{}\t{}", (int) main.increaseAttachmentSizeMB, String.format("%.2f", main.zipFileSize / 1024.0 / 1024.0), (int) main.maxMemory, duration);
 				}
+				logResult.info("\t{}\t{}\t{}\t{}\t{}", (int) main.increaseAttachmentSizeMB, String.format("%.2f", main.zipFileSize / 1024.0 / 1024.0), (int) main.maxMemory, minDuration, "MINIMAL AMONG " + args.length);
 			} else {
 				try {
 					duration = 0;
