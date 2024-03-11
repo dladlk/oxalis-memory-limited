@@ -1,11 +1,13 @@
 package network.oxalis.rd.memory;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.security.Security;
 
 import javax.crypto.Cipher;
 
+import org.apache.cxf.io.CachedOutputStream;
 import org.apache.xml.security.algorithms.JCEMapper;
 import org.apache.xml.security.utils.EncryptionConstants;
 import org.slf4j.Logger;
@@ -43,6 +45,7 @@ public class Main {
 			SLF4JBridgeHandler.removeHandlersForRootLogger();
 			SLF4JBridgeHandler.install();
 		}
+
 		Main main = new Main();
 		main.beforeClass();
 		boolean failed = false;
@@ -76,6 +79,34 @@ public class Main {
 		}
 	}
 
+	private static void logModifiedClasses() {
+		Class<?>[] modifiedClasses = new Class[] {
+
+				org.apache.jcp.xml.dsig.internal.dom.DOMReference.class,
+
+				org.apache.wss4j.dom.transform.AttachmentContentSignatureTransform.class,
+
+				org.apache.wss4j.common.util.AttachmentUtils.class,
+
+				org.apache.cxf.io.CachedOutputStream.class,
+		};
+
+		log.info("Overview of modified/not modified standard classes:");
+		for (int i = 0; i < modifiedClasses.length; i++) {
+			Class<?> cls = modifiedClasses[i];
+			log.info("{}: {}", cls.getName(), isModified(cls) ? "MODIFIED" : " NOT modified");
+		}
+	}
+
+	private static boolean isModified(Class<?> class1) {
+		int modifiedVersion = 0;
+		try {
+			modifiedVersion = (int) class1.getDeclaredField("MODIFIED_VERSION").get(null);
+		} catch (Throwable e) {
+		}
+		return modifiedVersion != 0;
+	}
+
 	private byte[] resourceToByteArray(String resource) throws Exception {
 		try (InputStream is = this.getClass().getResourceAsStream(resource)) {
 			return is.readAllBytes();
@@ -84,6 +115,7 @@ public class Main {
 
 	public void beforeClass() throws Exception {
 		maxMemory = TestUtil.logMaxMemory(log);
+		logModifiedClasses();
 		service = new SendReceiveService();
 	}
 
@@ -113,7 +145,32 @@ public class Main {
 				.build();
 		this.zipFileSize = documentBuilder.getZipFileSize();
 
-		return service.send(payloadFile);
+		long duration = service.send(payloadFile);
+
+		logCXFTempFolderContents();
+
+		return duration;
+	}
+
+	private void logCXFTempFolderContents() {
+		CachedOutputStream cos = new CachedOutputStream();
+		cos.setThreshold(1);
+		try {
+			cos.write(new byte[] { 1, 2 });
+		} catch (IOException e) {
+		}
+
+		File parent = cos.getTempFile().getParentFile();
+		try {
+			cos.close();
+		} catch (IOException e) {
+		}
+
+		File[] listFiles = parent.listFiles();
+		System.out.println("Temp files: " + listFiles.length);
+		for (File file : listFiles) {
+			System.out.println(file.getName() + " " + file.length() + " " + file.lastModified());
+		}
 	}
 
 }
